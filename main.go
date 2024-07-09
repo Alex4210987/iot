@@ -3,6 +3,7 @@ package main
 import (
 	_const "backend/const"
 	"backend/router"
+	"backend/util"
 	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -17,6 +18,8 @@ import (
 var (
 	port   string
 	client *iotda.IoTDAClient
+	HWClient *iotda.IoTDAClient
+	DeviceId string
 )
 
 func SettingUpEnvironment() {
@@ -27,6 +30,8 @@ func SettingUpEnvironment() {
 	}
 	// 配置端口
 	port = os.Getenv("FM_PORT")
+	// 配置设备ID
+	DeviceId = os.Getenv("DEVICE_ID")
 	// 配置数据库
 	// database.InitDB()
 	// 配置常量
@@ -61,13 +66,18 @@ func InitHuaweiCloudClient() {
 			WithRegion(region.NewRegion("cn-north-4", endpoint)).
 			WithCredential(auth).
 			Build())
-}
 
-var HWClient = client
+	HWClient = client
+}
 
 func main() {
 	// 初始化环境
 	SettingUpEnvironment()
+	commandParams := map[string]interface{}{
+		"buzzer_switch": true,
+  		"window_switch": true,
+	}
+	util.SendIoTCommand(HWClient, DeviceId, commandParams)
 	// 初始化路由
 	r := gin.Default()
 	// 配置CORS
