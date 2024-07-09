@@ -1,13 +1,9 @@
 package api
 
 import (
-	"backend/client/database"
-	"backend/http_param"
 	"backend/model"
-	"backend/util"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"time"
 )
 
 
@@ -147,5 +143,100 @@ func IotMessages() gin.HandlerFunc {
 }		
 
 func HandleMessage(event model.Event) {
-	return
+	// // traverse all services in event
+	// for _, service := range event.Body.Services {
+	// 	if service.ServiceID == "atmospheric_environment" {
+	// 		// handle atmospheric_environment service
+	// 		HandleAtmosphericEnvironment(service)
+	// 	}
+	// 	if service.ServiceID == "park_energy" {
+	// 		// handle park_energy service
+	// 		HandleParkEnergy(service)
+	// 	}
+	// 	if service.ServiceID == "park_lighting" {
+	// 		// handle park_lighting service
+	// 		HandleParkLighting(event, service)
+	// 	}
+	// 	if service.ServiceID == "personal_access" {
+	// 		// handle personal_access service
+	// 		HandlePersonalAccess(service)
+	// 	}
+	// 	if service.ServiceID == "park_fire_protection" {
+	// 		// handle park_fire_protection service
+	// 		HandleParkFireProtection(service)
+	// 	}
+	// 	if service.ServiceID == "park_security" {
+	// 		// handle park_security service
+	// 		HandleParkSecurity(service)
+	// 	}
+	// }
 }
+
+// {
+//     "resource": "device.property",
+//     "event": "report",
+//     "event_time": "20151212T121212Z",
+//     "event_time_ms": "2015-12-12T12:12:12.000Z",
+//     "request_id": "3fe58d5e-8697-4849-a165-7db128f7e776",
+//     "notify_data": {
+//         "header": {
+//             "device_id": "6663d8537dbfd46fabbf54b9_device_",
+//             "product_id": "6663d8537dbfd46fabbf54b9",
+//             "app_id": "d4922d8a-6c8e-4396-852c-164aefa6638f",`
+//             "gateway_id": "d4922d8a-6c8e-4396-852c-164aefa6638f",
+//             "node_id": "ABC123456789",
+//             "tags": [
+//                 {
+//                     "tag_value": "testTagValue",
+//                     "tag_key": "testTagName"
+//                 }
+//             ]
+//         }
+//     },
+//     "body": {
+//         "services": [
+//             {
+//                 "service_id": "atmospheric_environment",
+//                 "properties": {
+//                     "temperature": 80,
+//                     "humidity": 80,
+//                     "air_quility": 80,
+//                     "rainfall": true
+//                 },
+//                 "event_time": "20151212T121212Z"
+//             },
+//             {
+//                 "service_id": "park_energy",
+//                 "properties": {
+//                     "electric_current": 80,
+//                     "water_discharge": 80
+//                 },
+//                 "event_time": "20151212T121212Z"
+//             },
+//             {
+//                 "service_id": "park_lighting",
+//                 "properties": {
+//                     "sunlight": 80,
+//                     "external_light": true,
+//                     "indoor_light": true
+//                 },
+//                 "event_time": "20151212T121212Z"
+//             },
+//             {
+//                 "service_id": "personal_access",
+//                 "properties": {
+//                     "human_existence": true
+//                 },
+//                 "event_time": "20151212T121212Z"
+//             },
+//             {
+//                 "service_id": "park_fire_protection",
+//                 "properties": {
+//                     "fire_occurence": true
+//                 },
+//                 "event_time": "20151212T121212Z"
+//             }
+//         ]
+//     }
+// }
+

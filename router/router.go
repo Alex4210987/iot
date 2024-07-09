@@ -1,12 +1,19 @@
 package router
 
 import (
-	"backend/middleware"
 	"backend/router/api"
 	"github.com/gin-gonic/gin"
 )
 
 func UseMyRouter(r *gin.Engine) {
+
+	iot := r.Group("/iot")
+	{
+		iot.POST("/messages",
+			api.IotMessages(),
+		)
+	}
+
 	// mcu := r.Group("/mcu")
 	// {
 	// 	mcu.POST("/auth",
@@ -61,10 +68,4 @@ func UseMyRouter(r *gin.Engine) {
 	// 	)
 
 	// }
-
-	iot:=r.Group("/iot"){
-		iot.POST("/messages",
-			api.IotMessages(),
-
-	}
 }

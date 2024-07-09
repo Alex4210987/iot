@@ -1,10 +1,5 @@
 package model
 
-import (
-	"gorm.io/gorm"
-	"time"
-)
-
 // // MCU 单片机
 // type MCU struct {
 // 	ID       int       `json:"id"`       // 单片机的 ID
