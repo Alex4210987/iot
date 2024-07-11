@@ -77,7 +77,11 @@ func main() {
 		"buzzer_switch": true,
   		"window_switch": true,
 	}
-	util.SendIoTCommand(HWClient, DeviceId, commandParams)
+	i := 0
+	for i < 1000 {
+		util.SendIoTCommand(HWClient, DeviceId, commandParams)
+		i++
+	}
 	// 初始化路由
 	r := gin.Default()
 	// 配置CORS
