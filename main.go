@@ -12,7 +12,8 @@ import (
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/basic"
 	iotda "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iotda/v5"
 	region "github.com/huaweicloud/huaweicloud-sdk-go-v3/core/region"
-	core_auth "github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth"
+	// "github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/basic"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth"
 )
 
 var (
@@ -48,21 +49,23 @@ func InitHuaweiCloudClient() {
 	sk := os.Getenv("CLOUD_SDK_SK")
 	// 定义 endpoint
 	endpoint := os.Getenv("CLOUD_SDK_ENDPOINT")
+	projectID := os.Getenv("CLOUD_SDK_PROJECT_ID")
 
 	if ak == "" || sk == "" || endpoint == "" {
 		panic("AK, SK or endpoint environment variables are not set")
 	}
 
-	// 创建认证对象
 	auth := basic.NewCredentialsBuilder().
-		WithAk(ak).
-		WithSk(sk).
-		WithDerivedPredicate(core_auth.GetDefaultDerivedPredicate()). // 用于衍生 AK/SK 认证场景
-		Build()
+	WithAk(ak).
+	WithSk(sk).
+	WithProjectId(projectID).
+	// 企业版/标准版需要使用衍生算法，基础版请删除该配置"WithDerivedPredicate"
+	WithDerivedPredicate(auth.GetDefaultDerivedPredicate()).
+	Build()
 
-	// 创建 IoTDA 客户端
-	client = iotda.NewIoTDAClient(
+	client := iotda.NewIoTDAClient(
 		iotda.IoTDAClientBuilder().
+			// 标准版/企业版需要自行创建region，基础版使用IoTDARegion中的region对象
 			WithRegion(region.NewRegion("cn-north-4", endpoint)).
 			WithCredential(auth).
 			Build())
