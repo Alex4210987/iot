@@ -3,31 +3,30 @@ package main
 import (
 	_const "backend/const"
 	"backend/router"
-	"backend/util"
+	"backend/router/api"
 	"fmt"
+	"os"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
-	"os"
-	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/basic"
-	iotda "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iotda/v5"
-	region "github.com/huaweicloud/huaweicloud-sdk-go-v3/core/region"
-	// "github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/basic"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/basic"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/region"
+	iotda "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iotda/v5"
+	"github.com/joho/godotenv"
 )
 
 var (
-	port   string
-	client *iotda.IoTDAClient
-	HWClient *iotda.IoTDAClient
-	DeviceId string
+	port       string
+	HWClient   *iotda.IoTDAClient
+	DeviceId   string
 )
 
 func SettingUpEnvironment() {
 	// 读取配置文件
 	err := godotenv.Load()
 	if err != nil {
-		panic(fmt.Errorf("Fatal error loading .env file: %s \n", err))
+		panic(fmt.Errorf("fatal error loading .env file: %s", err))
 	}
 	// 配置端口
 	port = os.Getenv("FM_PORT")
@@ -55,20 +54,21 @@ func InitHuaweiCloudClient() {
 		panic("AK, SK or endpoint environment variables are not set")
 	}
 
-	auth := basic.NewCredentialsBuilder().
-	WithAk(ak).
-	WithSk(sk).
-	WithProjectId(projectID).
-	// 企业版/标准版需要使用衍生算法，基础版请删除该配置"WithDerivedPredicate"
-	WithDerivedPredicate(auth.GetDefaultDerivedPredicate()).
-	Build()
+	auth, _ := basic.NewCredentialsBuilder().
+		WithAk(ak).
+		WithSk(sk).
+		WithProjectId(projectID).
+		// 企业版/标准版需要使用衍生算法，基础版请删除该配置"WithDerivedPredicate"
+		WithDerivedPredicate(auth.GetDefaultDerivedPredicate()).
+		SafeBuild()
 
-	client := iotda.NewIoTDAClient(
-		iotda.IoTDAClientBuilder().
-			// 标准版/企业版需要自行创建region，基础版使用IoTDARegion中的region对象
-			WithRegion(region.NewRegion("cn-north-4", endpoint)).
-			WithCredential(auth).
-			Build())
+	builder, _ := iotda.IoTDAClientBuilder().
+		// 标准版/企业版需要自行创建region，基础版使用IoTDARegion中的region对象
+		WithRegion(region.NewRegion("cn-north-4", endpoint)).
+		WithCredential(auth).
+		SafeBuild()
+
+	client := iotda.NewIoTDAClient(builder)
 
 	HWClient = client
 }
@@ -76,15 +76,7 @@ func InitHuaweiCloudClient() {
 func main() {
 	// 初始化环境
 	SettingUpEnvironment()
-	commandParams := map[string]interface{}{
-		"buzzer_switch": true,
-  		"window_switch": true,
-	}
-	i := 0
-	for i < 1000 {
-		util.SendIoTCommand(HWClient, DeviceId, commandParams)
-		i++
-	}
+
 	// 初始化路由
 	r := gin.Default()
 	// 配置CORS
@@ -95,6 +87,13 @@ func main() {
 
 	r.Use(cors.New(config))
 	router.UseMyRouter(r)
+
+	r.POST("/iot/message", api.IotMessages())
+
+	// 添加人脸识别接口路由
+	r.POST("/face/add", api.AddFaceHandler)
+	r.POST("/face/search", api.SearchFaceHandler)
+
 	des := ":" + port
 	_ = r.Run(des)
 }
