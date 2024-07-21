@@ -4,6 +4,7 @@ import (
 	_const "backend/const"
 	"backend/router"
 	"backend/router/api"
+	// "backend/util"
 	"fmt"
 	"os"
 
@@ -74,6 +75,15 @@ func InitHuaweiCloudClient() {
 }
 
 func main() {
+	// commandParams := map[string]interface{}{
+	// 	"buzzer_switch": true,
+  	// 	"window_switch": true,
+	// }
+	// i := 0
+	// for i < 1000 {
+	// 	util.SendIoTCommand(HWClient, DeviceId, commandParams, "atmospheric_environment_commands", "atmospheric_environment")
+	// 	i++
+	// }
 	// 初始化环境
 	SettingUpEnvironment()
 
@@ -89,6 +99,7 @@ func main() {
 	router.UseMyRouter(r)
 
 	r.POST("/iot/message", api.IotMessages())
+	r.POST("/iot/completion", api.GetCompletions)
 
 	// 添加人脸识别接口路由
 	r.POST("/face/add", api.AddFaceHandler)

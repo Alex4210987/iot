@@ -7,7 +7,7 @@ import (
 )
 
 
-func SendIoTCommand(client *iotda.IoTDAClient, deviceID string, commandParams map[string]interface{}) (*hwmodel.CreateCommandResponse, error) {
+func SendIoTCommand(client *iotda.IoTDAClient, deviceID string, commandParams map[string]interface{}, commandName string, serviceId string) (*hwmodel.CreateCommandResponse, error) {
 	// 将 commandParams 转换为 *interface{}
 	paras := mapToInterface(commandParams)
 
@@ -15,6 +15,8 @@ func SendIoTCommand(client *iotda.IoTDAClient, deviceID string, commandParams ma
 		DeviceId: deviceID,
 		Body: &hwmodel.DeviceCommandRequest{
 			Paras:       &paras,
+			CommandName: &commandName,
+			ServiceId: &serviceId,
 		},
 	}
 
