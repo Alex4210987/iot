@@ -1,0 +1,56 @@
+package main
+
+import (
+	"net/http"
+	"time"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+)
+
+// 设备记录结构体
+type DeviceRecord struct {
+	ID     int    `json:"id"`
+	Name   string `json:"name"`
+	Mac    string `json:"mac"`
+	Status bool   `json:"status"`
+	Time   string `json:"time"`
+}
+
+func main() {
+	r := gin.Default()
+
+	// 启用CORS中间件
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:8081", "https://canvas.astro.cn-north-4.huaweicloud.com"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
+	// 设备记录列表
+	deviceRecords := []DeviceRecord{
+		{ID: 1, Name: "Device 1", Mac: "00:1B:44:11:3A:B7", Status: true, Time: "2023-07-12 10:30:00"},
+		{ID: 2, Name: "Device 2", Mac: "00:1B:44:11:3A:B8", Status: false, Time: "2023-07-12 11:00:00"},
+	}
+
+	// GET 请求处理函数
+	r.GET("/mcuList", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"data": deviceRecords})
+	})
+
+	// POST 请求处理函数
+	r.POST("/bind_mcu", func(c *gin.Context) {
+		var newDevice DeviceRecord
+		if err := c.ShouldBindJSON(&newDevice); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		newDevice.ID = len(deviceRecords) + 1
+		deviceRecords = append(deviceRecords, newDevice)
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	r.Run(":3070") // 启动服务，监听3070端口
+}

@@ -1,5 +1,0 @@
-*.exe
-.idea
-backend
-.env
-__debug_bin

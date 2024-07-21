@@ -1,0 +1,136 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+
+	"github.com/gin-gonic/gin"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/basic"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/def"
+	frs "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/frs/v2"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/services/frs/v2/model"
+	region "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/frs/v2/region"
+)
+
+func main() {
+	r := gin.Default()
+
+	// CORS middleware
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Authorization, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
+
+	// Initialize Huawei Cloud client
+	auth := basic.NewCredentialsBuilder().
+		WithAk("LB9WTRSVXC2D5FWGMKW2").
+		WithSk("tkPt6z6q5Qz42ZdPjtxccZTvY8so5D6divdaLpqF").
+		Build()
+
+	client := frs.NewFrsClient(
+		frs.FrsClientBuilder().
+			WithRegion(region.ValueOf("cn-east-3")).
+			WithCredential(auth).
+			Build())
+
+	// Endpoint to add face to face set
+	r.POST("/face/add", func(c *gin.Context) {
+		file, err := c.FormFile("file")
+		if err != nil {
+			fmt.Println("52")
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		fmt.Println(file.Filename)
+		// Save the uploaded file to a temporary location
+		tempFilePath := filepath.Join(os.TempDir(), file.Filename)
+
+		if err := c.SaveUploadedFile(file, tempFilePath); err != nil {
+			fmt.Println("60")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save file"})
+			return
+		}
+		// Create a FilePart from the saved file path
+		fileContent, err := os.Open(tempFilePath)
+		if err != nil {
+			fmt.Println("66")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to open file"})
+			return
+		}
+		defer fileContent.Close()
+
+		// Add face to face set
+		addRequest := &model.AddFacesByFileRequest{
+			FaceSetName: "test", // Replace with your face set name
+			Body: &model.AddFacesByFileRequestBody{
+				ImageFile: def.NewFilePart(fileContent),
+			},
+		}
+		fmt.Println("e3ae3wawwaewa")
+		addResponse, err := client.AddFacesByFile(addRequest)
+		if err != nil {
+			fmt.Println("84")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		fmt.Printf("Add faces response: %+v\n", addResponse)
+		c.JSON(http.StatusOK, gin.H{"message": "人脸添加成功"})
+	})
+
+	// Endpoint to search face from face set
+	r.POST("/face/search", func(c *gin.Context) {
+		file, err := c.FormFile("file")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Save the uploaded file to a temporary location
+		tempFilePath := filepath.Join(os.TempDir(), file.Filename)
+		if err := c.SaveUploadedFile(file, tempFilePath); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save file"})
+			return
+		}
+
+		fileContent1, err := os.Open(tempFilePath)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to open file"})
+			return
+		}
+		defer fileContent1.Close()
+		// Search face in face set
+		searchRequest := &model.SearchFaceByFileRequest{
+			FaceSetName: "test", // Replace with your face set name
+			Body: &model.SearchFaceByFileRequestBody{
+				ImageFile: def.NewFilePart(fileContent1),
+			},
+		}
+
+		searchResponse, err := client.SearchFaceByFile(searchRequest)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		fmt.Printf("Search faces response: %+v\n", searchResponse)
+		c.JSON(http.StatusOK, searchResponse)
+	})
+
+	// Run server
+	if err := r.Run(":3070"); err != nil {
+		log.Fatalf("Failed to run server: %v", err)
+	}
+}

@@ -1,0 +1,40 @@
+package main
+
+import (
+	"net/http"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+)
+
+// 模拟的设备数据
+var devices = []struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}{
+	{ID: "1", Name: "Device A"},
+	{ID: "2", Name: "Device B"},
+	{ID: "3", Name: "Device C"},
+}
+
+func main() {
+	router := gin.Default()
+
+	// 启用CORS中间件
+	router.Use(cors.New(cors.Config{
+		AllowOrigins: []string{"http://localhost:8081"}, // 允许的跨域请求来源
+		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders: []string{"Origin", "Content-Type", "Authorization"},
+	}))
+
+	// 路由：获取设备列表
+	router.GET("/devices", getDevices)
+
+	// 启动服务器
+	router.Run(":8080")
+}
+
+func getDevices(c *gin.Context) {
+	// 返回设备列表
+	c.JSON(http.StatusOK, gin.H{"data": devices})
+}

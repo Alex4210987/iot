@@ -1,0 +1,33 @@
+package main
+
+import (
+	"net/http"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+)
+
+// 模拟的用户数据
+var users = []string{"John Doe", "Jane Doe"}
+
+func main() {
+	router := gin.Default()
+
+	// 启用CORS中间件
+	router.Use(cors.New(cors.Config{
+		AllowOrigins: []string{"http://localhost:8081"}, // 允许的跨域请求来源
+		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders: []string{"Origin", "Content-Type", "Authorization"},
+	}))
+
+	// 路由：获取用户名
+	router.GET("/user/username", getUsername)
+
+	// 启动服务器
+	router.Run(":8080")
+}
+
+func getUsername(c *gin.Context) {
+	// 返回一个包含用户数组的JSON对象
+	c.JSON(http.StatusOK, gin.H{"data": users})
+}
