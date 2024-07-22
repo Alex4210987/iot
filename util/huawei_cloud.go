@@ -1,11 +1,11 @@
 package util
 
 import (
+	"fmt"
+
 	iotda "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iotda/v5"
 	hwmodel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iotda/v5/model"
-	"fmt"
 )
-
 
 func SendIoTCommand(client *iotda.IoTDAClient, deviceID string, commandParams map[string]interface{}, commandName string, serviceId string) (*hwmodel.CreateCommandResponse, error) {
 	// 将 commandParams 转换为 *interface{}
@@ -16,9 +16,10 @@ func SendIoTCommand(client *iotda.IoTDAClient, deviceID string, commandParams ma
 		Body: &hwmodel.DeviceCommandRequest{
 			Paras:       &paras,
 			CommandName: &commandName,
-			ServiceId: &serviceId,
+			ServiceId:   &serviceId,
 		},
 	}
+	fmt.Println(request)
 
 	response, err := client.CreateCommand(request)
 	if err != nil {
