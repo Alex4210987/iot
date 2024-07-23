@@ -3,3 +3,5 @@
 backend
 .env
 __debug_bin
+nohup.out
+router/api/config.go

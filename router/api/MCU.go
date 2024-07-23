@@ -3,6 +3,7 @@ package api
 import (
 	"backend/model"
 	"backend/util"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -69,19 +70,37 @@ func IotMessages() gin.HandlerFunc {
 			InitHuaweiCloudClient()
 			SettingUpEnvironment()
 		}
+
+		rawData, err := c.GetRawData()
+		if err != nil {
+			fmt.Println("Failed to get raw data:", err)
+		} else {
+			fmt.Println("Request JSON:", string(rawData))
+		}
+
+		if len(rawData) == 0 {
+			c.JSON(200, gin.H{
+				"status": "error",
+				"msg":    "empty request",
+			})
+			return
+		}
+
 		var form model.Event
-		err := c.ShouldBindJSON(&form)
+		err = json.Unmarshal(rawData, &form)
 		if err != nil {
 			c.JSON(200, gin.H{
 				"status": "error",
-				"msg":    "wrong request",
+				"msg":    "failed to parse JSON",
 			})
-			fmt.Println(err)
+			fmt.Println("Failed to parse JSON:", err)
 			return
 		}
+
 		c.JSON(200, gin.H{
 			"status": "success",
 		})
+
 		HandleMessage(form)
 	}
 }
