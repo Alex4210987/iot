@@ -33,13 +33,13 @@ package model
 // }
 
 type Event struct {
-	Resource   string     `json:"resource"`
-	Event      string     `json:"event"`
-	EventTime  string     `json:"event_time"`
+	Resource    string     `json:"resource"`
+	Event       string     `json:"event"`
+	EventTime   string     `json:"event_time"`
 	EventTimeMs string     `json:"event_time_ms"`
-	RequestID  string     `json:"request_id"`
-	NotifyData NotifyData `json:"notify_data"`
-	Body       Body       `json:"body"`
+	RequestID   string     `json:"request_id"`
+	NotifyData  NotifyData `json:"notify_data"`
+	Body        Body       `json:"body"`
 }
 
 type NotifyData struct {
@@ -65,21 +65,32 @@ type Body struct {
 }
 
 type Service struct {
-	ServiceID  string `json:"service_id"`
+	ServiceID  string     `json:"service_id"`
 	Properties Properties `json:"properties"`
-	EventTime  string `json:"event_time"`
+	EventTime  string     `json:"event_time"`
 }
 
 type Properties struct {
-	Temperature       *int  `json:"temperature,omitempty"`
-	Humidity          *int  `json:"humidity,omitempty"`
-	AirQuality        *int  `json:"air_quility,omitempty"`
-	Rainfall          *bool `json:"rainfall,omitempty"`
-	ElectricCurrent   *int  `json:"electric_current,omitempty"`
-	WaterDischarge    *int  `json:"water_discharge,omitempty"`
-	Sunlight          *int  `json:"sunlight,omitempty"`
-	ExternalLight     *bool `json:"external_light,omitempty"`
-	IndoorLight       *bool `json:"indoor_light,omitempty"`
-	HumanExistence    *bool `json:"human_existence,omitempty"`
-	FireOccurrence    *bool `json:"fire_occurence,omitempty"`
+	Temperature     *int  `json:"temperature,omitempty"`
+	Humidity        *int  `json:"humidity,omitempty"`
+	AirQuality      *int  `json:"air_quility,omitempty"`
+	Rainfall        *bool `json:"rainfall,omitempty"`
+	ElectricCurrent *int  `json:"electric_current,omitempty"`
+	WaterDischarge  *int  `json:"water_discharge,omitempty"`
+	Sunlight        *int  `json:"sunlight,omitempty"`
+	ExternalLight   *bool `json:"external_light,omitempty"`
+	IndoorLight     *bool `json:"indoor_light,omitempty"`
+	HumanExistence  *bool `json:"human_existence,omitempty"`
+	FireOccurrence  *bool `json:"fire_occurence,omitempty"`
+}
+
+type Switch struct {
+	WindowSwitch          *bool `json:"window_switch,omitempty"`
+	PumpSwitch            *bool `json:"pump_switch,omitempty"`
+	AirConditionerSwitch  *bool `json:"air_conditioner_switch,omitempty"`
+	IndoorLightSwitch     *bool `json:"indoor_light_switch,omitempty"`
+	ExternalLightSwitch   *bool `json:"external_light_switch,omitempty"`
+	AccessControlSwitch   *bool `json:"access_control_switch,omitempty"`
+	BuzzerSwitch          *bool `json:"buzzer_switch,omitempty"`
+	HumidifierSwitch      *bool `json:"humidifier_switch,omitempty"`
 }

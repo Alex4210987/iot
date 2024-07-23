@@ -5,7 +5,6 @@ import (
 	"backend/util"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth"
@@ -66,7 +65,7 @@ func InitHuaweiCloudClient() {
 
 func IotMessages() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if(HWClient == nil) {
+		if HWClient == nil {
 			InitHuaweiCloudClient()
 			SettingUpEnvironment()
 		}
@@ -89,82 +88,15 @@ func IotMessages() gin.HandlerFunc {
 
 func HandleMessage(event model.Event) {
 	// pass services to every handler
+	HandleParkFireProtection(event.Body.Services)
+	HandleHumanFireProtection(event.Body.Services)
 	HandleAtmosphericEnvironment(event.Body.Services)
 	HandleParkLighting(event.Body.Services)
-	HandleParkFireProtection(event.Body.Services)
-	HandlePersonalAccess(event.Body.Services)
 	HandleWindowControl(event.Body.Services)
 	HandlePumpControl(event.Body.Services)
 	HandleElectricCurrent(event.Body.Services)
+	HandleHumanExistence(event.Body.Services)
 }
-
-// {
-//     "resource": "device.property",
-//     "event": "report",
-//     "event_time": "20151212T121212Z",
-//     "event_time_ms": "2015-12-12T12:12:12.000Z",
-//     "request_id": "3fe58d5e-8697-4849-a165-7db128f7e776",
-//     "notify_data": {
-//         "header": {
-//             "device_id": "6663d8537dbfd46fabbf54b9_device_",
-//             "product_id": "6663d8537dbfd46fabbf54b9",
-//             "app_id": "d4922d8a-6c8e-4396-852c-164aefa6638f",`
-//             "gateway_id": "d4922d8a-6c8e-4396-852c-164aefa6638f",
-//             "node_id": "ABC123456789",
-//             "tags": [
-//                 {
-//                     "tag_value": "testTagValue",
-//                     "tag_key": "testTagName"
-//                 }
-//             ]
-//         }
-//     },
-//     "body": {
-//         "services": [
-//             {
-//                 "service_id": "atmospheric_environment",
-//                 "properties": {
-//                     "temperature": 80,
-//                     "humidity": 80,
-//                     "air_quility": 80,
-//                     "rainfall": true
-//                 },
-//                 "event_time": "20151212T121212Z"
-//             },
-//             {
-//                 "service_id": "park_energy",
-//                 "properties": {
-//                     "electric_current": 80,
-//                     "water_discharge": 80
-//                 },
-//                 "event_time": "20151212T121212Z"
-//             },
-//             {
-//                 "service_id": "park_lighting",
-//                 "properties": {
-//                     "sunlight": 80,
-//                     "external_light": true,
-//                     "indoor_light": true
-//                 },
-//                 "event_time": "20151212T121212Z"
-//             },
-//             {
-//                 "service_id": "personal_access",
-//                 "properties": {
-//                     "human_existence": true
-//                 },
-//                 "event_time": "20151212T121212Z"
-//             },
-//             {
-//                 "service_id": "park_fire_protection",
-//                 "properties": {
-//                     "fire_occurence": true
-//                 },
-//                 "event_time": "20151212T121212Z"
-//             }
-//         ]
-//     }
-// }
 
 // 1、温湿度控制逻辑，当温度较高或较低时打开空调并设置相应模式（对应某个开关，高温、低温、湿度大（送风））
 func HandleAtmosphericEnvironment(services []model.Service) {
@@ -211,21 +143,23 @@ func HandleAtmosphericEnvironment(services []model.Service) {
 	}
 }
 
-// 2、室内灯光开关逻辑  白天关灯、晚上开灯，有人也开关
+// 2、室内灯光开关逻辑  白天关灯、晚上开灯，有人也开关,光照低于200开室内灯
 func HandleParkLighting(services []model.Service) {
 	fmt.Println("Handling park_lighting service")
 
 	var flag bool
-	if time.Now().Hour() > 6 && time.Now().Hour() < 18 {
-		flag = false
-	} else {
-		flag = true
-	}
+	// if time.Now().Hour() > 6 && time.Now().Hour() < 18 {
+	// 	flag = false
+	// } else {
+	// 	flag = true
+	// }
 
 	for _, service := range services {
-		if service.ServiceID == "personal_access" {
-			if *service.Properties.HumanExistence {
+		if service.ServiceID == "light_switch_commands" {
+			if *service.Properties.Sunlight < 300 {
 				flag = true
+			} else {
+				flag = false
 			}
 		}
 	}
@@ -257,14 +191,46 @@ func HandleParkFireProtection(services []model.Service) {
 		"buzzer_switch": flag,
 	}
 
-	util.SendIoTCommand(HWClient, DeviceId, commandParams, "buzzer_commands", "park_fire_protection")
+	if flag {
+		fmt.Println("Sending fire alarm")
+	}
+
+	util.SendIoTCommand(HWClient, DeviceId, commandParams, "park_fire_protection_commands", "park_fire_protection")
 }
 
-// 门禁逻辑  人脸识别控制人员进出，将摄像头捕捉到人脸，调用接口返回相似度，大于0.93认为是同一个人放入，然后将放入记录传给前端显示。 （额外控制，火灾发生的时候开门）
-func HandlePersonalAccess(services []model.Service) {
-	fmt.Println("Handling personal_access service")
+// 如果没人关窗、空调、室内灯光
+func HandleHumanExistence(services []model.Service) {
+	fmt.Println("Handling human_existence service")
 
-	// TODO
+	var flag = false
+
+	for _, service := range services {
+		if service.ServiceID == "personnal_access" {
+			if *service.Properties.HumanExistence {
+				fmt.Println("There is someone")
+				flag = true
+			}
+		}
+	}
+
+	fmt.Println(flag)
+	commandParams := map[string]interface{}{
+		"window_switch": flag,
+	}
+
+	util.SendIoTCommand(HWClient, DeviceId, commandParams, "atmospheric_environment_commands", "atmospheric_environment")
+
+	commandParams = map[string]interface{}{
+		"air_conditioner_switch": flag,
+	}
+
+	util.SendIoTCommand(HWClient, DeviceId, commandParams, "air_conditioner_commands", "park_energy")
+
+	commandParams = map[string]interface{}{
+		"indoor_light_switch": flag,
+	}
+
+	util.SendIoTCommand(HWClient, DeviceId, commandParams, "light_switch_commands", "park_lighting")
 }
 
 // 窗户开关逻辑，室内外温度判断，在24到28°的时候窗户处于打开状态，或者当空气环境质量较差时关闭窗户。如果有火灾发生，打开窗户
@@ -283,6 +249,7 @@ func HandleWindowControl(services []model.Service) {
 			}
 		}
 		if service.ServiceID == "park_fire_protection" {
+			fmt.Println("Fire is: ", *service.Properties.FireOccurrence)
 			if *service.Properties.FireOccurrence {
 				flag = true
 			}
@@ -293,8 +260,39 @@ func HandleWindowControl(services []model.Service) {
 	commandParams := map[string]interface{}{
 		"window_switch": flag,
 	}
-
 	util.SendIoTCommand(HWClient, DeviceId, commandParams, "atmospheric_environment_commands", "atmospheric_environment")
+
+}
+
+func HandleHumanFireProtection(services []model.Service) {
+
+	var flag = false
+
+	for _, service := range services {
+		if service.ServiceID == "park_fire_protection" {
+			fmt.Println("Fire is: ", *service.Properties.FireOccurrence)
+			if *service.Properties.FireOccurrence {
+				fmt.Println("It is a fire")
+				flag = true
+			}
+		}
+	}
+
+	if flag {
+		commandParams := map[string]interface{}{
+			"access_control_switch": flag,
+		}
+		util.SendIoTCommand(HWClient, DeviceId, commandParams, "access_control_commands", "personnal_access")
+		commandParams = map[string]interface{}{
+			"humidifier_switch": flag,
+		}
+		util.SendIoTCommand(HWClient, DeviceId, commandParams, "park_fire_protection_commands", "park_fire_protection")
+		commandParams = map[string]interface{}{
+			"window_switch": flag,
+		}
+		util.SendIoTCommand(HWClient, DeviceId, commandParams, "atmospheric_environment_commands", "atmospheric_environment")
+	}
+
 }
 
 // 6、卧式水泵触发逻辑 当土壤湿度较低时，触发卧式水泵进行灌溉，当土壤湿度恢复到一定值时关闭卧式水泵
@@ -305,6 +303,7 @@ func HandlePumpControl(services []model.Service) {
 
 	for _, service := range services {
 		if service.ServiceID == "atmospheric_environment" {
+			fmt.Println("Humidity is: ", *service.Properties.Humidity)
 			if *service.Properties.Humidity < 60 {
 				flag = true
 			}
@@ -341,4 +340,116 @@ func HandleElectricCurrent(services []model.Service) {
 	// 返回给前端。设成一个global flag
 
 	ElectricCurrentFlag = flag
+}
+
+//	{
+//	    "window_switch": true
+//	}
+func HandleSwitch(c *gin.Context) {
+	var form model.Switch
+	err := c.ShouldBindJSON(&form)
+	if err != nil {
+		c.JSON(200, gin.H{
+			"status": "error",
+			"msg":    "wrong request",
+		})
+		fmt.Println(err)
+		return
+	}
+	c.JSON(200, gin.H{
+		"status": "success",
+	})
+	fmt.Println(form)
+	if HWClient == nil {
+		SettingUpEnvironment()
+		InitHuaweiCloudClient()
+	}
+	if form.WindowSwitch != nil {
+		commandParams := map[string]interface{}{
+			"window_switch": *form.WindowSwitch,
+		}
+		util.SendIoTCommand(HWClient, DeviceId, commandParams, "atmospheric_environment_commands", "atmospheric_environment")
+	}
+	if form.PumpSwitch != nil {
+		commandParams := map[string]interface{}{
+			"pump_switch": *form.PumpSwitch,
+		}
+		util.SendIoTCommand(HWClient, DeviceId, commandParams, "atmospheric_environment_commands", "atmospheric_environment")
+	}
+	if form.ExternalLightSwitch != nil {
+		commandParams := map[string]interface{}{
+			"external_light": *form.ExternalLightSwitch,
+		}
+		util.SendIoTCommand(HWClient, DeviceId, commandParams, "light_switch_commands", "park_lighting")
+	}
+	if form.IndoorLightSwitch != nil {
+		commandParams := map[string]interface{}{
+			"indoor_light_switch": *form.IndoorLightSwitch,
+		}
+		util.SendIoTCommand(HWClient, DeviceId, commandParams, "light_switch_commands", "park_lighting")
+	}
+	if form.AccessControlSwitch != nil {
+		commandParams := map[string]interface{}{
+			"access_control_switch": *form.AccessControlSwitch,
+		}
+		util.SendIoTCommand(HWClient, DeviceId, commandParams, "access_control_commands", "personnal_access")
+	}
+	if form.AirConditionerSwitch != nil {
+		commandParams := map[string]interface{}{
+			"air_conditioner_switch": *form.AirConditionerSwitch,
+		}
+		util.SendIoTCommand(HWClient, DeviceId, commandParams, "air_conditioner_commands", "park_energy")
+	}
+	if form.BuzzerSwitch != nil {
+		commandParams := map[string]interface{}{
+			"buzzer_switch": *form.BuzzerSwitch,
+		}
+		util.SendIoTCommand(HWClient, DeviceId, commandParams, "park_fire_protection_commands", "park_fire_protection")
+	}
+	if form.HumidifierSwitch != nil {
+		commandParams := map[string]interface{}{
+			"humidifier_switch": *form.HumidifierSwitch,
+		}
+		util.SendIoTCommand(HWClient, DeviceId, commandParams, "park_fire_protection_commands", "park_fire_protection")
+	}
+
+}
+
+func InitializeSwitches() {
+	if HWClient == nil {
+		SettingUpEnvironment()
+		InitHuaweiCloudClient()
+	}
+	commandParams := map[string]interface{}{
+		"window_switch": false,
+	}
+	util.SendIoTCommand(HWClient, DeviceId, commandParams, "atmospheric_environment_commands", "atmospheric_environment")
+	commandParams = map[string]interface{}{
+		"pump_switch": false,
+	}
+	util.SendIoTCommand(HWClient, DeviceId, commandParams, "atmospheric_environment_commands", "atmospheric_environment")
+	commandParams = map[string]interface{}{
+		"external_light": false,
+	}
+	util.SendIoTCommand(HWClient, DeviceId, commandParams, "light_switch_commands", "park_lighting")
+	commandParams = map[string]interface{}{
+		"indoor_light_switch": false,
+	}
+	util.SendIoTCommand(HWClient, DeviceId, commandParams, "light_switch_commands", "park_lighting")
+	commandParams = map[string]interface{}{
+		"access_control_switch": false,
+	}
+	util.SendIoTCommand(HWClient, DeviceId, commandParams, "access_control_commands", "personnal_access")
+	commandParams = map[string]interface{}{
+		"air_conditioner_switch": false,
+	}
+	util.SendIoTCommand(HWClient, DeviceId, commandParams, "air_conditioner_commands", "park_energy")
+	commandParams = map[string]interface{}{
+		"buzzer_switch": false,
+	}
+	util.SendIoTCommand(HWClient, DeviceId, commandParams, "park_fire_protection_commands", "park_fire_protection")
+	commandParams = map[string]interface{}{
+		"humidifier_switch": false,
+	}
+	util.SendIoTCommand(HWClient, DeviceId, commandParams, "park_fire_protection_commands", "park_fire_protection")
 }

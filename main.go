@@ -1,7 +1,6 @@
 package main
 
 import (
-	_const "backend/const"
 	"backend/router/api"
 
 	"fmt"
@@ -32,12 +31,6 @@ func SettingUpEnvironment() {
 	port = os.Getenv("FM_PORT")
 	// 配置设备ID
 	DeviceId = os.Getenv("DEVICE_ID")
-	// 配置数据库
-	// database.InitDB()
-	// 配置常量
-	_const.InitConst()
-	// 初始化map
-	// model.InitMap()
 	// 初始化华为云客户端
 	InitHuaweiCloudClient()
 }
@@ -76,6 +69,8 @@ func InitHuaweiCloudClient() {
 func main() {
 	// 初始化环境
 	SettingUpEnvironment()
+	api.InitDB()
+	// api.InitializeSwitches()
 
 	// 初始化路由
 	r := gin.Default()
@@ -94,6 +89,17 @@ func main() {
 	// 添加人脸识别接口路由
 	r.POST("/face/add", api.AddFaceHandler)
 	r.POST("/face/search", api.SearchFaceHandler)
+
+	r.GET("/mcuList", api.GetAllDevices)
+	r.GET("/data/history", api.GetHistoryData)
+	r.GET("/user/data/history", api.GetHistoryData)
+	r.GET("/user/data/realtime", api.GetNewestData)
+	r.POST("/frontend/buttons", api.HandleSwitch)
+
+	r.POST("/login", api.UserLogin)
+	r.POST("/register", api.UserRegister)
+	r.GET("/online-users", api.GetOnlineUsers) // 查询在线用户的 API
+	r.GET("/current-user", api.GetCurrentUser) // 查询当前用户的 API
 
 	des := ":" + port
 	_ = r.Run(des)

@@ -19,7 +19,7 @@ func SendIoTCommand(client *iotda.IoTDAClient, deviceID string, commandParams ma
 			ServiceId:   &serviceId,
 		},
 	}
-	fmt.Println(request)
+	// fmt.Println(request)
 
 	response, err := client.CreateCommand(request)
 	if err != nil {
@@ -27,7 +27,7 @@ func SendIoTCommand(client *iotda.IoTDAClient, deviceID string, commandParams ma
 		return nil, err
 	}
 
-	fmt.Println(response)
+	// fmt.Println(response)
 	return response, nil
 }
 
@@ -35,3 +35,4 @@ func SendIoTCommand(client *iotda.IoTDAClient, deviceID string, commandParams ma
 func mapToInterface(m map[string]interface{}) interface{} {
 	return m
 }
+

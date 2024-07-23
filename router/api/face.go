@@ -1,6 +1,7 @@
 package api
 
 import (
+	"backend/util"
 	"fmt"
 	"net/http"
 	"os"
@@ -41,6 +42,7 @@ func AddFaceHandler(c *gin.Context) {
 	if FaceClient == nil {
 		InitFaceClient()
 	}
+	//
 	file, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -85,31 +87,37 @@ func SearchFaceHandler(c *gin.Context) {
 		InitFaceClient()
 	}
 
-	file, err := c.FormFile("file")
+	contentType := c.GetHeader("Content-Type")
+	if contentType != "image/jpeg" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Content-Type. Expected image/jpeg"})
+		return
+	}
+
+	fileContent, err := c.GetRawData()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
 		return
 	}
 
 	// Save the uploaded file to a temporary location
-	tempFilePath := filepath.Join(os.TempDir(), file.Filename)
-	if err := c.SaveUploadedFile(file, tempFilePath); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save file"})
+	tempFilePath := filepath.Join(os.TempDir(), "uploaded.jpg")
+	err = os.WriteFile(tempFilePath, fileContent, 0644)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file"})
 		return
 	}
 
-	fileContent, err := os.Open(tempFilePath)
+	fileContentFile, err := os.Open(tempFilePath)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to open file"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open file"})
 		return
 	}
-	defer fileContent.Close()
 
 	// Search face in face set
 	searchRequest := &model.SearchFaceByFileRequest{
 		FaceSetName: "test", // Replace with your face set name
 		Body: &model.SearchFaceByFileRequestBody{
-			ImageFile: def.NewFilePart(fileContent),
+			ImageFile: def.NewFilePart(fileContentFile),
 		},
 	}
 
@@ -119,6 +127,22 @@ func SearchFaceHandler(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("Search faces response: %+v\n", searchResponse)
+	flag := false
+	for _, face := range *searchResponse.Faces {
+		fmt.Printf("Face similarity: %f\n", *face.Similarity)
+		if *face.Similarity > 0.85 {
+			flag = true
+		}
+	}
+
+	commandParams := map[string]interface{}{
+		"access_control_switch": flag,
+	}
+
+	if HWClient == nil {
+		SettingUpEnvironment()
+		InitHuaweiCloudClient()
+	}
+	util.SendIoTCommand(HWClient, DeviceId, commandParams, "access_control_commands", "personnal_access")
 	c.JSON(http.StatusOK, searchResponse)
 }
