@@ -19,6 +19,7 @@ var (
 	HWClient            *iotda.IoTDAClient
 	DeviceId            string
 	ElectricCurrentFlag bool
+	ExsitCount          int = 0
 )
 
 func SettingUpEnvironment() {
@@ -107,59 +108,16 @@ func IotMessages() gin.HandlerFunc {
 
 func HandleMessage(event model.Event) {
 	// pass services to every handler
-	HandleParkFireProtection(event.Body.Services)
-	HandleHumanFireProtection(event.Body.Services)
-	HandleAtmosphericEnvironment(event.Body.Services)
-	HandleParkLighting(event.Body.Services)
-	HandleWindowControl(event.Body.Services)
-	HandlePumpControl(event.Body.Services)
-	HandleElectricCurrent(event.Body.Services)
-	HandleHumanExistence(event.Body.Services)
-}
-
-// 1、温湿度控制逻辑，当温度较高或较低时打开空调并设置相应模式（对应某个开关，高温、低温、湿度大（送风））
-func HandleAtmosphericEnvironment(services []model.Service) {
-	fmt.Println("Handling atmospheric_environment service")
-
-	// "service_id": "atmospheric_environment",
-	// "properties": {
-	//     "temperature": 80,
-	//     "humidity": 80,
-	//     "air_quility": 80,
-	//     "rainfall": true
-	// },
-
-	//  temperature>29, air_conditioner_commands-air_conditioner_switch->true
-	//  temperature<20, air_conditioner_commands-air_conditioner_switch->false
-
-	//  humidity>80, air_conditioner_commands-air_conditione_switch->true
-	//  humidity<60, air_conditioner_commands-air_conditione_switch->false
-
-	var flag bool
-
-	for _, service := range services {
-		if service.ServiceID == "atmospheric_environment" {
-			if *service.Properties.Temperature > 29 {
-				flag = true
-			} else if *service.Properties.Temperature < 20 {
-				flag = false
-			}
-			if *service.Properties.Humidity > 80 {
-				flag = true
-			} else if *service.Properties.Humidity < 60 {
-				flag = false
-			}
-		}
+	for _, service := range event.NotifyData.Body.Services {
+		fmt.Println(service.ServiceID)
 	}
-
-	fmt.Println(flag)
-	commandParams := map[string]interface{}{
-		"air_conditioner_switch": flag,
-	}
-
-	if flag {
-		util.SendIoTCommand(HWClient, DeviceId, commandParams, "air_conditioner_commands", "park_energy")
-	}
+	HandleParkFireProtection(event.NotifyData.Body.Services)
+	HandleFireProtection(event.NotifyData.Body.Services)
+	HandleAirConditioner(event.NotifyData.Body.Services)
+	HandleParkLighting(event.NotifyData.Body.Services)
+	HandleWindowControl(event.NotifyData.Body.Services)
+	HandlePumpControl(event.NotifyData.Body.Services)
+	HandleElectricCurrent(event.NotifyData.Body.Services)
 }
 
 // 2、室内灯光开关逻辑  白天关灯、晚上开灯，有人也开关,光照低于200开室内灯
@@ -175,9 +133,21 @@ func HandleParkLighting(services []model.Service) {
 
 	for _, service := range services {
 		if service.ServiceID == "light_switch_commands" {
+			fmt.Println("External light is: ", *service.Properties.ExternalLight)
 			if *service.Properties.Sunlight < 300 {
 				flag = true
 			} else {
+				flag = false
+			}
+		}
+		if service.ServiceID == "personnal_access" {
+			fmt.Println("Human existence is: ", *service.Properties.HumanExistence)
+			if *service.Properties.HumanExistence == "true" {
+				ExsitCount = 0
+			} else {
+				ExsitCount++
+			}
+			if ExsitCount > 3 {
 				flag = false
 			}
 		}
@@ -199,7 +169,8 @@ func HandleParkFireProtection(services []model.Service) {
 
 	for _, service := range services {
 		if service.ServiceID == "park_fire_protection" {
-			if *service.Properties.FireOccurrence {
+			fmt.Println("Fire is: ", *service.Properties.FireOccurrence)
+			if *service.Properties.FireOccurrence == "true" {
 				flag = true
 			}
 		}
@@ -217,41 +188,6 @@ func HandleParkFireProtection(services []model.Service) {
 	util.SendIoTCommand(HWClient, DeviceId, commandParams, "park_fire_protection_commands", "park_fire_protection")
 }
 
-// 如果没人关窗、空调、室内灯光
-func HandleHumanExistence(services []model.Service) {
-	fmt.Println("Handling human_existence service")
-
-	var flag = false
-
-	for _, service := range services {
-		if service.ServiceID == "personnal_access" {
-			if *service.Properties.HumanExistence {
-				fmt.Println("There is someone")
-				flag = true
-			}
-		}
-	}
-
-	fmt.Println(flag)
-	commandParams := map[string]interface{}{
-		"window_switch": flag,
-	}
-
-	util.SendIoTCommand(HWClient, DeviceId, commandParams, "atmospheric_environment_commands", "atmospheric_environment")
-
-	commandParams = map[string]interface{}{
-		"air_conditioner_switch": flag,
-	}
-
-	util.SendIoTCommand(HWClient, DeviceId, commandParams, "air_conditioner_commands", "park_energy")
-
-	commandParams = map[string]interface{}{
-		"indoor_light_switch": flag,
-	}
-
-	util.SendIoTCommand(HWClient, DeviceId, commandParams, "light_switch_commands", "park_lighting")
-}
-
 // 窗户开关逻辑，室内外温度判断，在24到28°的时候窗户处于打开状态，或者当空气环境质量较差时关闭窗户。如果有火灾发生，打开窗户
 func HandleWindowControl(services []model.Service) {
 	fmt.Println("Handling window_control service")
@@ -260,16 +196,37 @@ func HandleWindowControl(services []model.Service) {
 
 	for _, service := range services {
 		if service.ServiceID == "atmospheric_environment" {
+			fmt.Println("Temperature is: ", *service.Properties.Temperature)
 			if *service.Properties.Temperature > 24 && *service.Properties.Temperature < 28 {
 				flag = true
 			}
-			if *service.Properties.AirQuality < 60 {
+			if service.Properties.AirQuality != nil && *service.Properties.AirQuality < 60 {
+				flag = false
+			}
+			if service.Properties.Rainfall != nil && *service.Properties.Rainfall == "true" {
 				flag = false
 			}
 		}
 		if service.ServiceID == "park_fire_protection" {
 			fmt.Println("Fire is: ", *service.Properties.FireOccurrence)
-			if *service.Properties.FireOccurrence {
+			if *service.Properties.FireOccurrence == "true" {
+				flag = true
+			}
+		}
+		if service.ServiceID == "personnal_access" {
+			if *service.Properties.HumanExistence == "true" {
+				ExsitCount = 0
+			} else {
+				ExsitCount++
+			}
+			if ExsitCount > 3 {
+				flag = false
+			}
+		}
+		if service.ServiceID == "park_fire_protection" {
+			fmt.Println("Fire is: ", *service.Properties.FireOccurrence)
+			if *service.Properties.FireOccurrence == "true" {
+				fmt.Println("It is a fire")
 				flag = true
 			}
 		}
@@ -283,14 +240,14 @@ func HandleWindowControl(services []model.Service) {
 
 }
 
-func HandleHumanFireProtection(services []model.Service) {
+func HandleFireProtection(services []model.Service) {
 
 	var flag = false
 
 	for _, service := range services {
 		if service.ServiceID == "park_fire_protection" {
 			fmt.Println("Fire is: ", *service.Properties.FireOccurrence)
-			if *service.Properties.FireOccurrence {
+			if *service.Properties.FireOccurrence == "true" {
 				fmt.Println("It is a fire")
 				flag = true
 			}
@@ -306,10 +263,6 @@ func HandleHumanFireProtection(services []model.Service) {
 			"humidifier_switch": flag,
 		}
 		util.SendIoTCommand(HWClient, DeviceId, commandParams, "park_fire_protection_commands", "park_fire_protection")
-		commandParams = map[string]interface{}{
-			"window_switch": flag,
-		}
-		util.SendIoTCommand(HWClient, DeviceId, commandParams, "atmospheric_environment_commands", "atmospheric_environment")
 	}
 
 }
@@ -349,6 +302,7 @@ func HandleElectricCurrent(services []model.Service) {
 
 	for _, service := range services {
 		if service.ServiceID == "park_energy" {
+			fmt.Println("Electric current is: ", *service.Properties.ElectricCurrent)
 			if *service.Properties.ElectricCurrent > 80 {
 				flag = true
 			}
@@ -359,6 +313,61 @@ func HandleElectricCurrent(services []model.Service) {
 	// 返回给前端。设成一个global flag
 
 	ElectricCurrentFlag = flag
+}
+
+func HandleAirConditioner(services []model.Service) {
+	fmt.Println("Handling atmospheric_environment service")
+
+	// "service_id": "atmospheric_environment",
+	// "properties": {
+	//     "temperature": 80,
+	//     "humidity": 80,
+	//     "air_quility": 80,
+	//     "rainfall": true
+	// },
+
+	//  temperature>29, air_conditioner_commands-air_conditioner_switch->true
+	//  temperature<20, air_conditioner_commands-air_conditioner_switch->false
+
+	//  humidity>80, air_conditioner_commands-air_conditione_switch->true
+	//  humidity<60, air_conditioner_commands-air_conditione_switch->false
+
+	var flag bool
+
+	for _, service := range services {
+		if service.ServiceID == "atmospheric_environment" {
+			fmt.Println("Temperature is: ", *service.Properties.Temperature)
+			if *service.Properties.Temperature > 29 {
+				flag = true
+			} else if *service.Properties.Temperature < 20 {
+				flag = false
+			}
+			if *service.Properties.Humidity > 80 {
+				flag = true
+			} else if *service.Properties.Humidity < 60 {
+				flag = false
+			}
+			if service.Properties.Rainfall != nil && *service.Properties.Rainfall == "true" {
+				flag = true
+			}
+		}
+		if service.ServiceID == "park_fire_protection" {
+			fmt.Println("Fire is: ", *service.Properties.FireOccurrence)
+			if *service.Properties.FireOccurrence == "true" {
+				fmt.Println("It is a fire")
+				flag = true
+			}
+		}
+	}
+
+	fmt.Println(flag)
+	commandParams := map[string]interface{}{
+		"air_conditioner_switch": flag,
+	}
+
+	if flag {
+		util.SendIoTCommand(HWClient, DeviceId, commandParams, "air_conditioner_commands", "park_energy")
+	}
 }
 
 //	{
@@ -397,7 +406,7 @@ func HandleSwitch(c *gin.Context) {
 	}
 	if form.ExternalLightSwitch != nil {
 		commandParams := map[string]interface{}{
-			"external_light": *form.ExternalLightSwitch,
+			"external_light_switch": *form.ExternalLightSwitch,
 		}
 		util.SendIoTCommand(HWClient, DeviceId, commandParams, "light_switch_commands", "park_lighting")
 	}

@@ -81,13 +81,13 @@ func GetAllDevices(c *gin.Context) {
 // }
 
 type Data struct {
-	Timestamp       time.Time `gorm:"column:time;type:datetime;default:null" json:"time_stamp"`
-	Temperature     float64   `json:"temperature"`
-	Humidity        float64   `json:"humidity"`
-	SoilMoisture    float64   `json:"soil_moisture"`
-	WaterDischarge  float64   `json:"water_discharge"`
-	ElectricCurrent float64   `json:"electric_current"`
-	Sunlight        float64   `json:"sunlight"`
+	Timestamp       time.Time `gorm:"column:TIME;type:datetime;default:null" json:"time_stamp"`
+	Temperature     float64   `gorm:"column:TEMPERATURE" json:"temperature"`
+	Humidity        float64   `gorm:"column:HUMIDITY" json:"humidity"`
+	SoilMoisture    float64   `gorm:"column:SOIL_MOISTURE" json:"soil_moisture"`
+	WaterDischarge  float64   `gorm:"column:WATER_DISCHARGE" json:"water_discharge"`
+	ElectricCurrent float64   `gorm:"column:ELECTRIC_CURRENT" json:"electric_current"`
+	Sunlight        float64   `gorm:"column:SUN_LIGHT" json:"sunlight"`
 }
 
 // 0.key(编号，递增编号)

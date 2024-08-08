@@ -39,11 +39,11 @@ type Event struct {
 	EventTimeMs string     `json:"event_time_ms"`
 	RequestID   string     `json:"request_id"`
 	NotifyData  NotifyData `json:"notify_data"`
-	Body        Body       `json:"body"`
 }
 
 type NotifyData struct {
 	Header Header `json:"header"`
+	Body        Body       `json:"body"`
 }
 
 type Header struct {
@@ -71,17 +71,17 @@ type Service struct {
 }
 
 type Properties struct {
-	Temperature     *int  `json:"temperature,omitempty"`
+	Temperature     *float64  `json:"temperature,omitempty"`
 	Humidity        *int  `json:"humidity,omitempty"`
-	AirQuality      *int  `json:"air_quility,omitempty"`
-	Rainfall        *bool `json:"rainfall,omitempty"`
-	ElectricCurrent *int  `json:"electric_current,omitempty"`
+	AirQuality      *float64  `json:"alcohol,omitempty"`
+	Rainfall        *string `json:"rainfall,omitempty"`
+	ElectricCurrent *float64 `json:"electric_current,omitempty"`
 	WaterDischarge  *int  `json:"water_discharge,omitempty"`
 	Sunlight        *int  `json:"sunlight,omitempty"`
-	ExternalLight   *bool `json:"external_light,omitempty"`
-	IndoorLight     *bool `json:"indoor_light,omitempty"`
-	HumanExistence  *bool `json:"human_existence,omitempty"`
-	FireOccurrence  *bool `json:"fire_occurence,omitempty"`
+	ExternalLight   *string `json:"external_light,omitempty"`
+	IndoorLight     *string `json:"indoor_light,omitempty"`
+	HumanExistence  *string `json:"human_existence,omitempty"`
+	FireOccurrence  *string `json:"fire_occurence,omitempty"`
 }
 
 type Switch struct {
