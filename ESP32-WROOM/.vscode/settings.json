@@ -1,0 +1,12 @@
+{
+    "cmake.ignoreCMakeListsMissing": true,
+    "files.associations": {
+        "optional": "cpp",
+        "random": "cpp",
+        "limits": "cpp",
+        "new": "cpp",
+        "*.tcc": "cpp",
+        "cmath": "cpp",
+        "utility": "cpp"
+    }
+}
